@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Haivision  Monitor</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="page">
+    <header class="page-header">
+      <div>
+        <h1>Haivision  Monitor</h1>
+        <p class="page-subtitle">Live route health, traffic, and destination monitoring</p>
+      </div>
+
+      <div class="header-meta">
+        <div class="meta-card">
+          <span class="meta-label">Device ID</span>
+          <span class="meta-value"><code>{{ device_id }}</code></span>
+        </div>
+        <div class="meta-card">
+          <span class="meta-label">Collected</span>
+          <span class="meta-value">{{ collected_human }}</span>
+        </div>
+        <div class="meta-card">
+          <span class="meta-label">Poll interval</span>
+          <span class="meta-value">{{ poll_interval }} sec</span>
+        </div>
+      </div>
+    </header>
+
+    <section class="top-info">
+      <div class="info-card">
+        <span class="meta-label">Base URL</span>
+        <span class="meta-value"><code>{{ base_url }}</code></span>
+      </div>
+      <div class="info-card">
+        <span class="meta-label">Database</span>
+        <span class="meta-value"><code>{{ db_path }}</code></span>
+      </div>
+    </section>
+
+    <form class="toolbar" method="get">
+      <div class="toolbar-group">
+        <label for="q">Search</label>
+        <input id="q" type="text" name="q" value="{{ query }}" placeholder="Filter by route or destination">
+      </div>
+
+      <div class="toolbar-group small">
+        <label for="window">Window</label>
+        <select id="window" name="window">
+          {% for option in window_options %}
+            <option value="{{ option }}" {% if option == window_minutes %}selected{% endif %}>
+              Last {{ option }} min
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="toolbar-actions">
+        <button type="submit">Apply</button>
+        <a href="/">Reset</a>
+      </div>
+    </form>
+
+    {% if error %}
+      <div class="alert alert-error">
+        <strong>Error:</strong> {{ error }}
+      </div>
+    {% endif %}
+
+    <section class="routes-grid">
+      {% for route in routes %}
+        <article class="route-card">
+          <div class="route-card-header">
+            <div>
+              <h2 class="route-title">{{ route.route_name }}</h2>
+              <div class="route-subtitle">Route ID: <code>{{ route.route_id }}</code></div>
+            </div>
+            <span class="pill {{ route.severity }}">{{ route.route_state }}</span>
+          </div>
+
+          <div class="stats">
+            <div class="stat">
+              <div class="label">Elapsed</div>
+              <div class="value">{{ route.elapsed }}</div>
+            </div>
+            <div class="stat">
+              <div class="label">Source State</div>
+              <div class="value">{{ route.source_state }}</div>
+            </div>
+            <div class="stat">
+              <div class="label">Destinations</div>
+              <div class="value">{{ route.destination_count }}</div>
+            </div>
+            <div class="stat">
+              <div class="label">Bitrate</div>
+              <div class="value">{{ route.metrics["Bitrate"] }}</div>
+            </div>
+            <div class="stat">
+              <div class="label">Received Packets</div>
+              <div class="value">{{ route.metrics["Received Packets"] }}</div>
+            </div>
+            <div class="stat">
+              <div class="label">Used Bandwidth</div>
+              <div class="value">{{ route.metrics["Used Bandwidth"] }}</div>
+            </div>
+            <div class="stat">
+              <div class="label">Reconnections</div>
+              <div class="value">{{ route.metrics["Reconnections"] }}</div>
+            </div>
+            <div class="stat">
+              <div class="label">Dropped Packets</div>
+              <div class="value">{{ route.metrics["Dropped Packets"] }}</div>
+            </div>
+          </div>
+
+          <section class="panel">
+            <div class="panel-header">
+              <h3>Metrics Trend</h3>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="chart-{{ loop.index }}"></canvas>
+            </div>
+          </section>
+
+          <div class="two-col">
+            <section class="panel">
+              <div class="panel-header">
+                <h3>Source</h3>
+              </div>
+              <div class="info-list">
+                <div><strong>Name:</strong> {{ route.source_name }}</div>
+                <div><strong>State:</strong> {{ route.source_state }}</div>
+                <div><strong>ID:</strong> <code>{{ route.source_id }}</code></div>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <h3>Destinations</h3>
+              </div>
+
+              {% if route.destinations %}
+                <div class="destination-list">
+                  {% for dst in route.destinations %}
+                    <div class="destination-item">
+                      <div class="destination-top">
+                        <div>
+                          <div class="destination-name">{{ dst.name }}</div>
+                          <div class="destination-meta">
+                            <span>state={{ dst.state }}</span>
+                            <span>status={{ dst.status }}</span>
+                            <span>clients={{ dst.clients }}</span>
+                            <span>bw={{ dst.bandwidth }}</span>
+                            <span>reconnect={{ dst.reconnections }}</span>
+                            <span>dropped={{ dst.dropped_packets }}</span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          class="trend-toggle-btn"
+                          data-route-id="{{ route.route_id }}"
+                          data-destination-id="{{ dst.id }}"
+                          data-canvas-id="dst-chart-{{ loop.index0 }}-{{ route.route_id|replace(' ', '-') }}"
+                        >
+                          Show Trend
+                        </button>
+                      </div>
+
+                      <div
+                        class="destination-chart-area"
+                        id="dst-chart-wrap-{{ loop.index0 }}-{{ route.route_id|replace(' ', '-') }}"
+                        style="display:none;"
+                      >
+                        <div class="chart-wrap destination-chart-wrap">
+                          <canvas id="dst-chart-{{ loop.index0 }}-{{ route.route_id|replace(' ', '-') }}"></canvas>
+                        </div>
+                      </div>
+                    </div>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="empty-state">No destinations</div>
+              {% endif %}
+            </section>
+          </div>
+
+          <details class="raw-block">
+            <summary>Raw JSON</summary>
+            <pre>{{ route.raw | tojson(indent=2) }}</pre>
+          </details>
+        </article>
+      {% endfor %}
+    </section>
+  </div>
+
+  <script>
+  window.CHART_DATA = {{ chart_data | tojson | safe }};
+  window.SELECTED_WINDOW = {{ window_minutes }};
+</script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+</html>
