@@ -92,22 +92,3 @@ http://localhost:5000
 * Designed to be lightweight and easily extendable
 
 ---
-
-## 🛠️ Future Improvements
-
-* Alerts & notifications
-* Authentication for dashboard access
-* Export metrics (CSV/JSON)
-* Docker support
-
----
-
-## 📄 License
-
-Specify your license here (e.g., MIT License)
-
----
-
-## 👨‍💻 Author
-
-Your Name / Team
