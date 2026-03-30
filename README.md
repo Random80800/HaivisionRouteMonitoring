@@ -31,3 +31,8 @@ BASE_URL → Haivision API URL
 USERNAME / PASSWORD
 POLL_INTERVAL_SECONDS
 DB_PATH (optional)
+
+
+
+Running the APP:
+python3 run.py
